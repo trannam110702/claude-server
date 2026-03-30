@@ -6,7 +6,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "login": "node index.js login",
+    "test:refresh": "node lib/test-refresh.js"
   },
   "private": true,
   "dependencies": {

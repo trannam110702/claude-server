@@ -1,24 +1,6 @@
 import http from "node:http";
-import { readFileSync } from "node:fs";
 import { handleMessages, handleChatCompletions } from "./lib/proxy.js";
-
-// Minimal .env loader
-function loadEnv(path) {
-  try {
-    const content = readFileSync(path, "utf-8");
-    for (const line of content.split("\n")) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const eqIdx = trimmed.indexOf("=");
-      if (eqIdx === -1) continue;
-      const key = trimmed.slice(0, eqIdx).trim();
-      const value = trimmed.slice(eqIdx + 1).trim();
-      if (!process.env[key]) process.env[key] = value;
-    }
-  } catch { /* .env file is optional */ }
-}
-
-loadEnv(".env");
+import { readTokens } from "./lib/login.js";
 
 // Handle CLI commands
 if (process.argv[2] === "login") {
@@ -28,19 +10,21 @@ if (process.argv[2] === "login") {
 }
 
 // Config
+const tokens = readTokens();
+
 const config = {
   port: parseInt(process.env.PORT || "8080"),
   host: process.env.HOST || "127.0.0.1",
   baseUrl: (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, ""),
   apiKey: process.env.ANTHROPIC_API_KEY || null,
-  accessToken: process.env.OAUTH_ACCESS_TOKEN || null,
-  refreshToken: process.env.OAUTH_REFRESH_TOKEN || null,
-  clientId: process.env.OAUTH_CLIENT_ID || "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
-  tokenExpiresAt: null
+  accessToken: tokens?.accessToken || null,
+  refreshToken: tokens?.refreshToken || null,
+  clientId: tokens?.clientId || "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
+  tokenExpiresAt: tokens?.expiresAt ? new Date(tokens.expiresAt).getTime() : null,
 };
 
 if (!config.apiKey && !config.accessToken && !config.refreshToken) {
-  console.error("No credentials found. Run 'node index.js login' to authenticate with Claude.");
+  console.error("No credentials found. Run 'npm run login' to authenticate with Claude.");
   process.exit(1);
 }
 
