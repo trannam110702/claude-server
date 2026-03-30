@@ -1,5 +1,5 @@
 import http from "node:http";
-import { handleMessages, handleChatCompletions } from "./lib/proxy.js";
+import { handleMessages, handleChatCompletions, scheduledTokenRefresh } from "./lib/proxy.js";
 import { readTokens } from "./lib/login.js";
 
 // Handle CLI commands
@@ -9,7 +9,13 @@ if (process.argv[2] === "login") {
   process.exit(0);
 }
 
-// Config
+if (process.argv[2] === "setup") {
+  const { setup } = await import("./lib/login.js");
+  await setup();
+  process.exit(0);
+}
+
+// Config — tokens.json takes priority, env vars as fallback (for Docker)
 const tokens = readTokens();
 
 const config = {
@@ -17,8 +23,8 @@ const config = {
   host: process.env.HOST || "127.0.0.1",
   baseUrl: (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, ""),
   apiKey: process.env.ANTHROPIC_API_KEY || null,
-  accessToken: tokens?.accessToken || null,
-  refreshToken: tokens?.refreshToken || null,
+  accessToken: tokens?.accessToken || process.env.OAUTH_ACCESS_TOKEN || null,
+  refreshToken: tokens?.refreshToken || process.env.OAUTH_REFRESH_TOKEN || null,
   clientId: tokens?.clientId || "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
   tokenExpiresAt: tokens?.expiresAt ? new Date(tokens.expiresAt).getTime() : null,
 };
@@ -108,4 +114,12 @@ server.listen(config.port, config.host, () => {
   console.log(`  POST /v1/messages          - Claude native format (pass-through)`);
   console.log(`  POST /v1/chat/completions  - OpenAI compatible format (translated)`);
   console.log(`  GET  /health               - Health check`);
+
+  // Check token expiry every 30 minutes, refresh if within 5 hours of expiring
+  if (config.refreshToken) {
+    const CHECK_INTERVAL = 30 * 60 * 1000;
+    scheduledTokenRefresh(config);
+    setInterval(() => scheduledTokenRefresh(config), CHECK_INTERVAL);
+    console.log(`  Token auto-refresh: checking every 30 minutes`);
+  }
 });

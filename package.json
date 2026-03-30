@@ -8,6 +8,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "login": "node index.js login",
+    "setup": "node index.js setup",
     "test:refresh": "node lib/test-refresh.js"
   },
   "private": true,
