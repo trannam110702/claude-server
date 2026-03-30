@@ -20,6 +20,13 @@ function loadEnv(path) {
 
 loadEnv(".env");
 
+// Handle CLI commands
+if (process.argv[2] === "login") {
+  const { login } = await import("./lib/login.js");
+  await login();
+  process.exit(0);
+}
+
 // Config
 const config = {
   port: parseInt(process.env.PORT || "8080"),
