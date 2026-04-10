@@ -1,212 +1,200 @@
-
-# Claude Server – OAuth Proxy
+# Claude Server - OAuth Proxy
 
 A lightweight proxy server that forwards requests to **Claude (Anthropic)** using OAuth 2.0 with PKCE flow.
 Supports both **native Claude format** (`/v1/messages`) and **OpenAI-compatible format** (`/v1/chat/completions`).
 
-## How It Works (Flow Overview)
+## How It Works
 
-This server acts as a **proxy** between your application and Claude (Anthropic).
-
-**Token Flow:**
-1. You run `npm run login` (or `npm run setup`) → get **Access Token** + **Refresh Token** from Claude.
-2. Tokens are saved to `tokens.json`.
-3. When your app sends a request to this server (`/v1/messages` or `/v1/chat/completions`):
-    - The server checks if the access token is still valid.
-    - If expired or about to expire → automatically uses the refresh token to get a new access token.
-    - The new tokens are saved back to `tokens.json`.
-4. The server then forwards your request to Claude's official API with a valid token.
-5. Response from Claude is returned to your application (with optional OpenAI format translation).
-
-**Background Refresh:**
-- Every 30 minutes, the server checks the token expiry.
-- If the token will expire within 5 hours, it proactively refreshes it.
-- This keeps the server running without manual intervention most of the time.
----
-
-## Features
-- Full OAuth PKCE login flow (browser-based)
-- Manual token setup for headless/Docker environments
-- Automatic access token refresh with background checks
-- Tokens saved to `tokens.json` (portable across machines)
-- Docker support with persistent volume
-- No dependency on Claude Code keychain
-
-## Quick Commands
-
-After cloning the repository:
-
-```bash
-npm install
+```
+Your App  -->  Claude Server (proxy)  -->  Claude API
+                  |
+                  |- Auto-refreshes OAuth tokens
+                  |- Translates OpenAI format to Claude format
+                  |- Fallback across multiple accounts
 ```
 
-| Command                    | Description                                      |
-|---------------------------|--------------------------------------------------|
-| `npm run login`           | Full browser OAuth login (recommended)           |
-| `npm run setup`           | Manual token input (for headless servers)        |
-| `npm start`               | Start the server                                 |
-| `npm run dev`             | Start with nodemon (auto-restart on changes)     |
-| `npm run test:refresh`    | Test token refresh manually                      |
-| `npm run docker:build`    | Build & push AMD64 Docker image                  |
-| `npm run docker:run`      | Run Docker container with volume                 |
-| `npm run docker:logs`     | Follow container logs in real-time               |
-| `npm run docker:stop`     | Stop and remove all running containers           |
+1. You provide OAuth tokens (access + refresh) to the server.
+2. When your app sends a request, the server checks token validity.
+3. If expired, it automatically refreshes using the refresh token.
+4. The request is forwarded to Claude's API with a valid token.
+5. Background refresh runs every 30 minutes to keep tokens alive.
 
-## Installation & Setup
+## VPS Setup (Docker Only)
 
-### 1. Local Setup (Machine with Browser)
+You only need Docker installed on your VPS. No need to clone the repo.
+
+### Step 1: Get Your OAuth Tokens
+
+You need an **Access Token** and **Refresh Token** from Claude. There are two ways:
+
+**Option A:** Clone the repo temporarily on a machine with a browser:
+```bash
+git clone https://github.com/nam1107/claude-server.git /tmp/claude-login
+cd /tmp/claude-login && npm install && npm run login
+```
+After login, copy the tokens from the generated `tokens.json`.
+
+**Option B:** If you already have tokens (e.g. from Claude Code), skip to Step 2.
+
+Your tokens look like:
+- Access Token: `sk-ant-oat01-...`
+- Refresh Token: `sk-ant-ort01-...`
+
+### Step 2: Create the tokens file on your VPS
+
+SSH into your VPS and create the tokens file:
 
 ```bash
-# Install dependencies
-npm install
+mkdir -p /data/claude-server
 
-# Run OAuth login (browser will open automatically)
-npm run login
+cat > /data/claude-server/tokens.json << 'EOF'
+{
+  "accessToken": "sk-ant-oat01-YOUR_ACCESS_TOKEN_HERE",
+  "refreshToken": "sk-ant-ort01-YOUR_REFRESH_TOKEN_HERE",
+  "expiresAt": "2025-01-01T00:00:00.000Z"
+}
+EOF
 
-# Start the server
-npm start
+chmod 600 /data/claude-server/tokens.json
 ```
 
-The server will run at `http://127.0.0.1:8080`
+> Set `expiresAt` to a past date to force an immediate refresh on startup.
 
-### 2. Headless Server / VPS Setup
-
-#### Option A: Manual Setup
+### Step 3: Run with Docker
 
 ```bash
-npm run setup
-```
-
-You will be prompted to enter:
-- Access Token (`sk-ant-oat01-...`)
-- Refresh Token (`sk-ant-ort01-...`)
-
-Or pass them directly:
-```bash
-npm run setup -- sk-ant-oat01-xxxx sk-ant-ort01-xxxx
-```
-
-#### Option B: Docker (Recommended for Production)
-
-1. **On your local machine (Mac/Windows)** – Build the image:
-
-```bash
-npm run docker:build
-```
-
-2. **On the VPS (Contabo or any Linux server)**:
-
-```bash
-# Clean up old containers
-npm run docker:stop
-
-# Run the server with persistent tokens
 docker run -d \
+  --name claude-server \
+  --restart unless-stopped \
   -p 8080:8080 \
   -e HOST=0.0.0.0 \
-  -v /data/tokens.json:/app/tokens.json \
+  -v /data/claude-server/tokens.json:/app/tokens.json \
   nam1107/claude-server
 ```
 
-### 3. Important: Login from the Server's IP (Token Binding)
-
-Claude OAuth tokens are often bound to the IP address. Tokens created on your Mac may not work on the VPS.
-
-**Best method using SSH port forwarding:**
-
-**On your Mac:**
-```bash
-ssh -L 9999:localhost:9999 root@161.97.150.95
-```
-
-**Inside the SSH session on the VPS:**
-```bash
-cd /path/to/claude-server          # or /tmp/claude-login
-OAUTH_CALLBACK_PORT=9999 npm run login
-```
-
-- Copy the authorization URL shown in the terminal.
-- Open it in **your Mac's browser**.
-- After successful authorization, the `tokens.json` file will be created on the VPS.
-- Then start the Docker container (see Option B above).
-
-### 4. Verify the Server is Running
+### Step 4: Verify
 
 ```bash
 # Health check
-curl http://YOUR_VPS_IP:8080/health
+curl http://localhost:8080/health
 
-# View logs
-npm run docker:logs
+# Check logs
+docker logs -f claude-server
 ```
+
+## Multi-Account Fallback (Optional)
+
+To use multiple Claude accounts for failover, create an `accounts.json` file:
+
+```bash
+cat > /data/claude-server/accounts.json << 'EOF'
+[
+  {
+    "accessToken": "sk-ant-oat01-ACCOUNT_1_TOKEN",
+    "refreshToken": "sk-ant-ort01-ACCOUNT_1_REFRESH",
+    "expiresAt": "2025-01-01T00:00:00.000Z"
+  },
+  {
+    "accessToken": "sk-ant-oat01-ACCOUNT_2_TOKEN",
+    "refreshToken": "sk-ant-ort01-ACCOUNT_2_REFRESH",
+    "expiresAt": "2025-01-01T00:00:00.000Z"
+  }
+]
+EOF
+```
+
+Then mount it alongside the tokens file:
+
+```bash
+docker run -d \
+  --name claude-server \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e HOST=0.0.0.0 \
+  -v /data/claude-server/tokens.json:/app/tokens.json \
+  -v /data/claude-server/accounts.json:/app/accounts.json \
+  nam1107/claude-server
+```
+
+## Token Binding (Important)
+
+Claude OAuth tokens may be bound to the IP address where they were created. If tokens from your Mac don't work on the VPS, you need to generate them from the VPS IP.
+
+**Use SSH port forwarding:**
+
+```bash
+# On your Mac — forward port 9999 from VPS to your local machine
+ssh -L 9999:localhost:9999 root@YOUR_VPS_IP
+```
+
+Then inside the SSH session, run a temporary container to do the login:
+
+```bash
+docker run -it --rm \
+  -p 9999:9999 \
+  -e OAUTH_CALLBACK_PORT=9999 \
+  -v /data/claude-server/tokens.json:/app/tokens.json \
+  nam1107/claude-server \
+  node index.js login
+```
+
+Copy the authorization URL, open it in **your Mac's browser**, and complete the login. The tokens will be saved to `/data/claude-server/tokens.json` on the VPS.
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/v1/messages` | POST | Claude native format (pass-through) |
+| `/v1/chat/completions` | POST | OpenAI-compatible format (auto-translated) |
+| `/health` | GET | Health check + account status |
 
 ## Environment Variables
 
-| Variable                  | Description                              | Default Value          |
-|---------------------------|------------------------------------------|------------------------|
-| `HOST`                    | Bind address                             | 127.0.0.1              |
-| `PORT`                    | Server port                              | 8080                   |
-| `OAUTH_CALLBACK_PORT`     | Fixed port for login callback            | random                 |
-| `ANTHROPIC_BASE_URL`      | Custom Anthropic API base URL            | https://api.anthropic.com |
+| Variable | Description | Default |
+|---|---|---|
+| `HOST` | Bind address | `127.0.0.1` |
+| `PORT` | Server port | `8080` |
+| `OAUTH_CALLBACK_PORT` | Fixed port for login callback | random |
+| `ANTHROPIC_BASE_URL` | Custom Anthropic API base URL | `https://api.anthropic.com` |
 
-## Token Refresh
+## Common Docker Commands
 
-- The server automatically refreshes the access token before expiry.
-- Background check runs **every 30 minutes**.
-- New tokens are automatically saved to `tokens.json`.
-- If refresh fails (`invalid_grant`), run `npm run login` again from the server's IP.
+```bash
+# View logs
+docker logs -f claude-server
 
-## Available Endpoints
+# Restart
+docker restart claude-server
 
-- `POST /v1/messages` → Native Claude API format (pass-through)
-- `POST /v1/chat/completions` → OpenAI-compatible format (auto-translated)
-- `GET /health` → Health check
+# Stop and remove
+docker stop claude-server && docker rm claude-server
+
+# Update to latest image
+docker pull nam1107/claude-server
+docker stop claude-server && docker rm claude-server
+# Then re-run the docker run command from Step 3
+```
 
 ## Troubleshooting
 
-**"Refresh token not found or invalid"**  
-→ Run `npm run login` again from the same server/IP.
+**"No credentials found"**
+- Check that `tokens.json` is mounted correctly and contains valid tokens.
 
-**Cannot connect to port 8080**  
-→ Ensure `HOST=0.0.0.0` and open the firewall:
-```bash
-ufw allow 8080
-```
+**"Refresh token not found or invalid"**
+- Re-generate tokens from the VPS IP using the SSH port forwarding method above.
 
-**Port already in use during login**  
-→ Try a different port:
-```bash
-OAUTH_CALLBACK_PORT=8888 npm run login
-```
-
-**Docker build error (platform)**  
-→ Always use `npm run docker:build`
-
-**Tokens not persisting after container restart**  
-→ Make sure you use the volume mount: `-v /data/tokens.json:/app/tokens.json`
-
-## Security Notes
-
-- Never commit `tokens.json` to Git (already ignored).
-- Protect `tokens.json` with proper permissions:
+**Cannot connect to port 8080**
+- Ensure `HOST=0.0.0.0` is set and the firewall allows port 8080:
   ```bash
-  chmod 600 /data/tokens.json
+  ufw allow 8080
   ```
-- The server only proxies requests, it does not log or store conversation content.
 
-## Need Help?
+**Tokens not persisting after container restart**
+- Ensure the volume mount points to a file, not a directory:
+  `-v /data/claude-server/tokens.json:/app/tokens.json`
 
-If you get any error:
-1. Run `npm run docker:logs` and copy the output.
-2. Share the exact error message and which command you used.
+## Security
 
----
-
-**Done!**  
-Just create a new file called `README.md` in the root of your project and paste the entire content above.
-
-Would you like me to also create:
-- A short `DEPLOYMENT.md` for VPS only?
-- Or improve any part of this README?
-
-Let me know!
+- Protect your tokens file: `chmod 600 /data/claude-server/tokens.json`
+- The server only proxies requests — it does not log or store conversation content.
+- Consider putting the server behind a reverse proxy (nginx/caddy) with HTTPS for production use.
