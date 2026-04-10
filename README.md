@@ -82,28 +82,21 @@ curl http://localhost:8080/health
 docker logs -f claude-server
 ```
 
-## Multi-Account Fallback (Optional)
+## Fallback API Keys (Optional)
 
-To use multiple Claude accounts for failover, create an `accounts.json` file:
+Support multiple API keys for automatic failover. If a request fails with a rate limit, auth, or server error, the server retries with the next key.
+
+**Set comma-separated keys via environment variable:**
 
 ```bash
-cat > /data/claude-server/accounts.json << 'EOF'
-[
-  {
-    "accessToken": "sk-ant-oat01-ACCOUNT_1_TOKEN",
-    "refreshToken": "sk-ant-ort01-ACCOUNT_1_REFRESH",
-    "expiresAt": "2025-01-01T00:00:00.000Z"
-  },
-  {
-    "accessToken": "sk-ant-oat01-ACCOUNT_2_TOKEN",
-    "refreshToken": "sk-ant-ort01-ACCOUNT_2_REFRESH",
-    "expiresAt": "2025-01-01T00:00:00.000Z"
-  }
-]
-EOF
+ANTHROPIC_API_KEY=sk-ant-key1,sk-ant-key2,sk-ant-key3
 ```
 
-Then mount it alongside the tokens file:
+OAuth token is always tried first (if configured). API keys are used as fallback in order.
+
+Fallback triggers on: 401, 402, 403, 429, 529, and 5xx errors.
+
+### Docker — New Container
 
 ```bash
 docker run -d \
@@ -111,8 +104,50 @@ docker run -d \
   --restart unless-stopped \
   -p 8080:8080 \
   -e HOST=0.0.0.0 \
+  -e ANTHROPIC_API_KEY="sk-ant-key1,sk-ant-key2,sk-ant-key3" \
   -v /data/claude-server/tokens.json:/app/tokens.json \
-  -v /data/claude-server/accounts.json:/app/accounts.json \
+  nam1107/claude-server
+```
+
+### Docker — Already Running Container
+
+You cannot change env vars on a running container. Recreate it:
+
+```bash
+# Stop and remove the old container
+docker stop claude-server && docker rm claude-server
+
+# Run again with the new env var
+docker run -d \
+  --name claude-server \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -e HOST=0.0.0.0 \
+  -e ANTHROPIC_API_KEY="sk-ant-key1,sk-ant-key2,sk-ant-key3" \
+  -v /data/claude-server/tokens.json:/app/tokens.json \
+  nam1107/claude-server
+```
+
+### Docker — Using `--env-file`
+
+Create or update your `.env` file:
+
+```bash
+cat > /data/claude-server/.env << 'EOF'
+HOST=0.0.0.0
+ANTHROPIC_API_KEY=sk-ant-key1,sk-ant-key2,sk-ant-key3
+EOF
+```
+
+Then run:
+
+```bash
+docker run -d \
+  --name claude-server \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  --env-file /data/claude-server/.env \
+  -v /data/claude-server/tokens.json:/app/tokens.json \
   nam1107/claude-server
 ```
 
@@ -154,6 +189,7 @@ Copy the authorization URL, open it in **your Mac's browser**, and complete the 
 |---|---|---|
 | `HOST` | Bind address | `127.0.0.1` |
 | `PORT` | Server port | `8080` |
+| `ANTHROPIC_API_KEY` | API key(s), comma-separated for fallback | — |
 | `OAUTH_CALLBACK_PORT` | Fixed port for login callback | random |
 | `ANTHROPIC_BASE_URL` | Custom Anthropic API base URL | `https://api.anthropic.com` |
 

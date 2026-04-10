@@ -18,11 +18,18 @@ if (process.argv[2] === "setup") {
 // Config — tokens.json takes priority, env vars as fallback (for Docker)
 const tokens = readTokens();
 
+// Parse comma-separated API keys, filter empty entries
+const apiKeys = (process.env.ANTHROPIC_API_KEY || "")
+  .split(",")
+  .map(k => k.trim())
+  .filter(Boolean);
+
 const config = {
   port: parseInt(process.env.PORT || "8080"),
   host: process.env.HOST || "127.0.0.1",
   baseUrl: (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/$/, ""),
-  apiKey: process.env.ANTHROPIC_API_KEY || null,
+  apiKey: apiKeys[0] || null,
+  apiKeys,
   accessToken: tokens?.accessToken || process.env.OAUTH_ACCESS_TOKEN || null,
   refreshToken: tokens?.refreshToken || process.env.OAUTH_REFRESH_TOKEN || null,
   clientId: tokens?.clientId || "9d1c250a-e61b-44d9-88ed-5944d1962f5e",
@@ -32,6 +39,10 @@ const config = {
 if (!config.apiKey && !config.accessToken && !config.refreshToken) {
   console.error("No credentials found. Run 'npm run login' to authenticate with Claude.");
   process.exit(1);
+}
+
+if (config.apiKeys.length > 1) {
+  console.log(`Loaded ${config.apiKeys.length} API keys for fallback`);
 }
 
 // Read request body helper
