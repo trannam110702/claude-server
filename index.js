@@ -74,6 +74,37 @@ const server = http.createServer(async (req, res) => {
   // Log request
   console.log(`[${new Date().toISOString()}] ${req.method} ${path}`);
 
+  // Proxy dashboard requests to Next.js (internal port 3000)
+  if (path.startsWith("/dashboard") || (path.startsWith("/api") && !path.startsWith("/v1"))) {
+    const targetUrl = new URL(`http://127.0.0.1:3000${path}`);
+    targetUrl.search = req.url.split("?")[1] || "";
+
+    try {
+      const response = await fetch(targetUrl.toString(), {
+        method: req.method,
+        headers: {
+          ...req.headers,
+          host: "127.0.0.1:3000",
+        },
+        body: req.method !== "GET" && req.method !== "HEAD" ? await readBody(req) : undefined,
+      });
+
+      res.writeHead(response.status, {
+        "Content-Type": response.headers.get("content-type") || "application/json",
+        "Access-Control-Allow-Origin": "*",
+      });
+      res.end(await response.text());
+    } catch (err) {
+      if (err.code === "ECONNREFUSED") {
+        res.writeHead(503, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
+        res.end(JSON.stringify({ error: "Dashboard not available" }));
+      } else {
+        throw err;
+      }
+    }
+    return;
+  }
+
   try {
     // Health check
     if (path === "/health" && req.method === "GET") {
