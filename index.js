@@ -87,6 +87,7 @@ const server = http.createServer(async (req, res) => {
           host: "127.0.0.1:3000",
         },
         body: req.method !== "GET" && req.method !== "HEAD" ? await readBody(req) : undefined,
+        signal: AbortSignal.timeout(30000),
       });
 
       res.writeHead(response.status, {
