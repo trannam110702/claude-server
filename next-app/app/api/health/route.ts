@@ -1,33 +1,36 @@
 import { NextResponse } from "next/server";
-import { readTokens } from "@/lib/tokens";
+import { listAccounts, ClaudeAccount } from "@/lib/db";
 
 export async function GET() {
-  try {
-    const tokens = await readTokens();
-    const expiresAt = tokens?.expiresAt ? new Date(tokens.expiresAt) : null;
-    const now = new Date();
+  const accounts = (await listAccounts()) as ClaudeAccount[];
+  const active = accounts.filter((a) => a.isActive);
 
-    let status: "active" | "expiring-soon" | "expired" = "active";
-    if (!expiresAt) {
-      status = "expired";
-    } else {
-      const diffHours = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
-      if (diffHours < 0) {
-        status = "expired";
-      } else if (diffHours < 24) {
-        status = "expiring-soon";
-      }
-    }
+  // Soonest-expiring active account drives the dashboard status badge.
+  const soonest = active
+    .filter((a) => a.expiresAt)
+    .sort((a, b) => +new Date(a.expiresAt!) - +new Date(b.expiresAt!))[0];
 
-    const nextRefresh = new Date(now.getTime() + 30 * 60 * 1000);
-
-    return NextResponse.json({
-      tokenExpiry: expiresAt?.toISOString() || null,
-      lastRefresh: tokens?.lastRefresh || null,
-      nextRefresh: nextRefresh.toISOString(),
-      status,
-    });
-  } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
+  let status: "active" | "expiring-soon" | "expired" = "active";
+  if (active.length === 0) {
+    status = "expired";
+  } else if (soonest) {
+    const diffHours = (new Date(soonest.expiresAt!).getTime() - Date.now()) / (1000 * 60 * 60);
+    if (diffHours < 0) status = "expired";
+    else if (diffHours < 24) status = "expiring-soon";
   }
+
+  const lastRefresh = active
+    .map((a) => a.updatedAt)
+    .filter(Boolean)
+    .sort()
+    .reverse()[0] || null;
+
+  return NextResponse.json({
+    tokenExpiry: soonest?.expiresAt || null,
+    lastRefresh,
+    nextRefresh: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    status,
+    accountCount: accounts.length,
+    activeCount: active.length,
+  });
 }

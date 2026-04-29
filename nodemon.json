@@ -1,0 +1,7 @@
+{
+  "_comment": "Scope nodemon to the proxy's own files. Without this it watches the entire repo (default cwd) and reacts to Next.js's churn under next-app/.next/, which kicks off proxy restarts on every dashboard edit and timing-collides with Next's incremental dev build (the missing routes-manifest.json error).",
+  "watch": ["index.js", "lib"],
+  "ext": "js,mjs,cjs,json",
+  "ignore": ["next-app/**", "**/.next/**", "**/node_modules/**", "data/**"],
+  "delay": 200
+}

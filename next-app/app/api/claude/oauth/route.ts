@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
-import { readTokens } from "@/lib/tokens";
+import { listAccounts, ClaudeAccount } from "@/lib/db";
 
 export async function GET() {
-  try {
-    const tokens = await readTokens();
-    if (!tokens) {
-      return NextResponse.json({ connected: false });
-    }
-    return NextResponse.json({
-      connected: true,
-      expiresAt: tokens.expiresAt,
-      hasRefreshToken: !!tokens.refreshToken,
-    });
-  } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
-  }
+  const accounts = (await listAccounts()) as ClaudeAccount[];
+  const active = accounts.filter((a) => a.isActive);
+  return NextResponse.json({
+    connected: active.length > 0,
+    accountCount: accounts.length,
+    activeCount: active.length,
+  });
 }

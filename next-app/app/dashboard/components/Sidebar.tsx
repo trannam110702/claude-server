@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, FileText, HeartPulse, LogOut } from "lucide-react";
+import { Home, BarChart3, FileText, HeartPulse, KeyRound, LogOut, Users } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ModeToggle } from "@/components/mode-toggle";
 import { BRAND } from "@/lib/branding";
 
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: Home },
+  { href: "/dashboard/accounts", label: "Accounts", icon: Users },
+  { href: "/dashboard/tokens", label: "API tokens", icon: KeyRound },
   { href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
   { href: "/dashboard/logs", label: "Logs", icon: FileText },
   { href: "/dashboard/health", label: "Health", icon: HeartPulse },
@@ -21,9 +24,12 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
-      <div className="border-b p-4">
-        <h1 className="text-base font-semibold">{BRAND.name}</h1>
-        <p className="text-xs text-muted-foreground">{BRAND.tagline}</p>
+      <div className="flex items-start justify-between gap-2 border-b p-4">
+        <div>
+          <h1 className="text-base font-semibold">{BRAND.name}</h1>
+          <p className="text-xs text-muted-foreground">{BRAND.tagline}</p>
+        </div>
+        <ModeToggle />
       </div>
 
       <nav className="flex-1 space-y-1 p-2">
