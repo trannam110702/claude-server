@@ -6,6 +6,6 @@ export async function GET() {
     const stats = getStats();
     return NextResponse.json(stats);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

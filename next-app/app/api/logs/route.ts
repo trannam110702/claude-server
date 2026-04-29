@@ -4,8 +4,8 @@ import { queryLogs } from "@/lib/db";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const page = parseInt(searchParams.get("page") || "1") || 1;
+    const limit = parseInt(searchParams.get("limit") || "50") || 50;
     const startDate = searchParams.get("startDate") || undefined;
     const endDate = searchParams.get("endDate") || undefined;
     const endpoint = searchParams.get("endpoint") || undefined;
@@ -13,6 +13,6 @@ export async function GET(req: NextRequest) {
     const result = queryLogs({ page, limit, startDate, endDate, endpoint });
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }

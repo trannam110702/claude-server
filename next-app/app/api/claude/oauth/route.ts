@@ -1,20 +1,9 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
-
-function readTokens() {
-  const tokensPath = path.join(process.cwd(), "..", "data", "tokens.json");
-  try {
-    const content = fs.readFileSync(tokensPath, "utf-8");
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
+import { readTokens } from "@/lib/tokens";
 
 export async function GET() {
   try {
-    const tokens = readTokens();
+    const tokens = await readTokens();
     if (!tokens) {
       return NextResponse.json({ connected: false });
     }
@@ -24,6 +13,6 @@ export async function GET() {
       hasRefreshToken: !!tokens.refreshToken,
     });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
