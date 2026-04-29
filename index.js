@@ -1,6 +1,7 @@
 import http from "node:http";
 import { handleMessages, handleChatCompletions, scheduledTokenRefresh } from "./lib/proxy.js";
 import { readTokens } from "./lib/login.js";
+import { insertRequestLog } from "./next-app/lib/db.js";
 
 // Handle CLI commands
 if (process.argv[2] === "login") {
@@ -84,14 +85,76 @@ const server = http.createServer(async (req, res) => {
     // Claude native format - pass through
     if (path === "/v1/messages" && req.method === "POST") {
       const body = await readBody(req);
-      await handleMessages(body, res, config);
+      const startTime = Date.now();
+      try {
+        await handleMessages(body, res, config);
+        const endTime = Date.now();
+        const latencyMs = endTime - startTime;
+        try {
+          insertRequestLog({
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            path: path,
+            status: 200,
+            latency_ms: latencyMs,
+          });
+        } catch (logErr) {
+          console.error("[logging] failed:", logErr.message);
+        }
+      } catch (err) {
+        const endTime = Date.now();
+        try {
+          insertRequestLog({
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            path: path,
+            status: 400,
+            latency_ms: endTime - startTime,
+            error: err.message,
+          });
+        } catch (logErr) {
+          console.error("[logging] failed:", logErr.message);
+        }
+        throw err;
+      }
       return;
     }
 
     // OpenAI compatible format - translate
     if (path === "/v1/chat/completions" && req.method === "POST") {
       const body = await readBody(req);
-      await handleChatCompletions(body, res, config);
+      const startTime = Date.now();
+      try {
+        await handleChatCompletions(body, res, config);
+        const endTime = Date.now();
+        const latencyMs = endTime - startTime;
+        try {
+          insertRequestLog({
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            path: path,
+            status: 200,
+            latency_ms: latencyMs,
+          });
+        } catch (logErr) {
+          console.error("[logging] failed:", logErr.message);
+        }
+      } catch (err) {
+        const endTime = Date.now();
+        try {
+          insertRequestLog({
+            timestamp: new Date().toISOString(),
+            method: req.method,
+            path: path,
+            status: 400,
+            latency_ms: endTime - startTime,
+            error: err.message,
+          });
+        } catch (logErr) {
+          console.error("[logging] failed:", logErr.message);
+        }
+        throw err;
+      }
       return;
     }
 
