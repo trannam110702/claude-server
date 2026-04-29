@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
-import path from "path";
-import fs from "fs";
+import { readTokens } from "@/lib/tokens";
 
 export async function POST() {
   try {
-    const tokensPath = path.join(process.cwd(), "..", "data", "tokens.json");
-    const content = fs.readFileSync(tokensPath, "utf-8");
-    const tokens = JSON.parse(content);
+    const tokens = await readTokens();
 
-    if (!tokens.refreshToken) {
+    if (!tokens?.refreshToken) {
       return NextResponse.json({ error: "No refresh token available" }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, message: "Token refresh triggered" });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
 }
