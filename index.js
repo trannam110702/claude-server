@@ -1,7 +1,7 @@
 import http from "node:http";
 import { handleMessages, handleChatCompletions, scheduledTokenRefresh } from "./lib/proxy.js";
 import { readTokens } from "./lib/login.js";
-import { insertRequestLog } from "./next-app/lib/db.js";
+import { insertRequestLog } from "./lib/db.js";
 
 // Handle CLI commands
 if (process.argv[2] === "login") {
@@ -75,7 +75,12 @@ const server = http.createServer(async (req, res) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${path}`);
 
   // Proxy dashboard requests to Next.js (internal port 3000)
-  if (path.startsWith("/dashboard") || (path.startsWith("/api") && !path.startsWith("/v1"))) {
+  if (
+    path.startsWith("/dashboard") ||
+    path === "/login" ||
+    path.startsWith("/_next") ||
+    (path.startsWith("/api") && !path.startsWith("/v1"))
+  ) {
     const targetUrl = new URL(`http://127.0.0.1:3000${path}`);
     targetUrl.search = req.url.split("?")[1] || "";
 

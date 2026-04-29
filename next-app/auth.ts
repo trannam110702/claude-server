@@ -9,7 +9,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     }),
   ],
   pages: {
-    signIn: "/oauth",
+    signIn: "/login",
   },
   callbacks: {
     session({ session, token }) {
