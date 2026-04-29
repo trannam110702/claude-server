@@ -28,9 +28,9 @@ export default function UsagePage() {
       });
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    setCountdown(60);
   };
 
   useEffect(() => {
