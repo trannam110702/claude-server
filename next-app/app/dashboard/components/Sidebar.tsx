@@ -23,7 +23,7 @@ export function Sidebar() {
   const { data: session } = useSession();
 
   return (
-    <aside className="flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
+    <aside className="flex h-full w-64 flex-shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground overflow-hidden">
       <div className="flex items-start justify-between gap-2 border-b p-4">
         <div>
           <h1 className="text-base font-semibold">{BRAND.name}</h1>

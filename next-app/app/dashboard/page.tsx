@@ -3,8 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
-import { signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 
 interface Stats {
@@ -38,14 +36,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome, {session?.user?.email}</p>
-        </div>
-        <Button variant="outline" onClick={() => signOut()}>
-          Sign Out
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome, {session?.user?.email}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
