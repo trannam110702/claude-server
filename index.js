@@ -139,8 +139,9 @@ const server = http.createServer(async (req, res) => {
       // Build response headers, taking care to preserve multiple Set-Cookie values.
       // Headers.forEach() collapses repeated headers into one comma-joined string,
       // which is invalid for Set-Cookie (cookies use commas inside values), so we
-      // pull set-cookie out via getSetCookie() and pass it as an array.
-      const headerEntries = [];
+      // pull set-cookie out via getSetCookie() and pass it as an array. writeHead
+      // accepts an object with array values for repeated headers like Set-Cookie.
+      const outHeaders = { "Access-Control-Allow-Origin": "*" };
       const setCookies = typeof response.headers.getSetCookie === "function"
         ? response.headers.getSetCookie()
         : [];
@@ -149,12 +150,11 @@ const server = http.createServer(async (req, res) => {
         const lower = key.toLowerCase();
         if (lower === "content-encoding") return;
         if (lower === "set-cookie") return; // handled separately
-        headerEntries.push([key, value]);
+        outHeaders[key] = value;
       });
-      headerEntries.push(["Access-Control-Allow-Origin", "*"]);
-      if (setCookies.length) headerEntries.push(["Set-Cookie", setCookies]);
+      if (setCookies.length) outHeaders["Set-Cookie"] = setCookies;
 
-      res.writeHead(response.status, headerEntries);
+      res.writeHead(response.status, outHeaders);
       const buf = Buffer.from(await response.arrayBuffer());
       res.end(buf);
     } catch (err) {
