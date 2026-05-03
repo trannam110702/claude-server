@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, FileText, HeartPulse, KeyRound, LogOut, Users } from "lucide-react";
+import { Home, BarChart3, FileText, HeartPulse, KeyRound, LogOut, Users, Trophy } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard/accounts", label: "Accounts", icon: Users },
   { href: "/dashboard/tokens", label: "API tokens", icon: KeyRound },
   { href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
+  { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/dashboard/logs", label: "Logs", icon: FileText },
   { href: "/dashboard/health", label: "Health", icon: HeartPulse },
 ];
