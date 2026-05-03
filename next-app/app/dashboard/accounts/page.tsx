@@ -26,15 +26,31 @@ interface AccountRow {
   lastUsedAt: string | null;
   lastError: string | null;
   lastErrorAt: string | null;
+  errorCode: number | null;
+  backoffLevel: number;
   createdAt: string;
   updatedAt: string;
   accessTokenPreview: string | null;
   hasRefreshToken: boolean;
+  modelLocks: Array<{ model: string; until: string }>;
+  earliestLockUntil: string | null;
 }
 
 type StatusTone = "default" | "secondary" | "destructive";
+
+function formatLockCountdown(iso: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  if (diffMs <= 0) return "0s";
+  const totalSec = Math.ceil(diffMs / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 function statusOf(account: AccountRow): { label: string; tone: StatusTone } {
   if (!account.isActive) return { label: "disabled", tone: "secondary" };
+  if (account.modelLocks.length > 0) return { label: "locked", tone: "destructive" };
   if (account.lastError) return { label: "error", tone: "destructive" };
   return { label: "active", tone: "default" };
 }
@@ -75,6 +91,19 @@ export default function AccountsPage() {
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      // Re-render to refresh countdowns; data poll happens via load() if needed
+      setAccounts((cur) => (cur ? [...cur] : cur));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
   }, [load]);
 
   const setActive = async (account: AccountRow, next: boolean) => {
@@ -160,6 +189,7 @@ export default function AccountsPage() {
                   {isAdmin && <TableHead className="w-12">On</TableHead>}
                   <TableHead>Name</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Locks</TableHead>
                   <TableHead>Token</TableHead>
                   <TableHead>Last used</TableHead>
                 </TableRow>
@@ -199,6 +229,23 @@ export default function AccountsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant={status.tone}>{status.label}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {account.modelLocks.length === 0 ? (
+                          <span className="text-xs text-muted-foreground">clear</span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            {account.modelLocks.slice(0, 3).map((lk) => (
+                              <div key={lk.model} className="text-xs">
+                                <code className="text-muted-foreground">{lk.model}</code>
+                                <span className="ml-1 text-destructive">{formatLockCountdown(lk.until)}</span>
+                              </div>
+                            ))}
+                            {account.modelLocks.length > 3 && (
+                              <div className="text-xs text-muted-foreground">+{account.modelLocks.length - 3} more</div>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-xs">
                         {account.accessTokenPreview || "—"}
