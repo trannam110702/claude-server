@@ -15,17 +15,22 @@ jobs:
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          VPS_ENV_CONTENT: ${{ secrets.VPS_ENV }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
+          envs: VPS_ENV_CONTENT
           script_stop: true
           script: |
             set -euo pipefail
             cd /opt/claude-server
             git fetch --prune origin
             git reset --hard origin/main
+            umask 077
+            printf '%s' "$VPS_ENV_CONTENT" > .env
             docker compose up -d --build
             docker image prune -f
             docker compose ps

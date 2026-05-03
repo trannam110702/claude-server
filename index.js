@@ -123,9 +123,10 @@ const server = http.createServer(async (req, res) => {
       }
       // Reverse-proxy headers so Next.js (and Auth.js with trustHost) can build
       // correct absolute URLs (redirect_uri, callback URLs) from the public host.
-      const originalHost = req.headers.host || "";
-      headers["x-forwarded-host"] = originalHost;
-      headers["x-forwarded-proto"] = req.socket.encrypted ? "https" : "http";
+      // Preserve x-forwarded-* from upstream proxies (e.g. Caddy terminating TLS)
+      // — req.socket.encrypted reflects the local hop, not the original scheme.
+      headers["x-forwarded-host"] = req.headers["x-forwarded-host"] || req.headers.host || "";
+      headers["x-forwarded-proto"] = req.headers["x-forwarded-proto"] || (req.socket.encrypted ? "https" : "http");
       headers["x-forwarded-for"] = (req.headers["x-forwarded-for"] ? req.headers["x-forwarded-for"] + ", " : "") + (req.socket.remoteAddress || "");
 
       const response = await fetch(targetUrl.toString(), {
