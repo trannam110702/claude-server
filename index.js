@@ -186,7 +186,7 @@ const server = http.createServer(async (req, res) => {
       if (!userToken) return;
       const body = await readBody(req);
       // proxy.js owns request-logs persistence (it has account/model/token context).
-      await handleMessages(body, res, config, { userToken });
+      await handleMessages(body, res, config, { userToken, reqHeaders: req.headers });
       return;
     }
 
@@ -194,7 +194,7 @@ const server = http.createServer(async (req, res) => {
       const userToken = await requireUserToken(req, res);
       if (!userToken) return;
       const body = await readBody(req);
-      await handleChatCompletions(body, res, config, { userToken });
+      await handleChatCompletions(body, res, config, { userToken, reqHeaders: req.headers });
       return;
     }
 
