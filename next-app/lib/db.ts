@@ -9,6 +9,7 @@ export {
   getStats,
   getUsageStats,
   queryLeaderboard,
+  getLatencyPercentiles,
 } from "../../lib/db.js";
 
 // @ts-ignore - JS module without bundled types
