@@ -1,7 +1,6 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   ChartConfig,
   ChartContainer,
@@ -17,12 +16,6 @@ interface Stats {
   requestsToday: number;
   avgLatencyMs: number;
   errorCountToday: number;
-}
-
-interface Health {
-  tokenExpiry: string | null;
-  lastRefresh: string | null;
-  status: "active" | "expiring-soon" | "expired";
 }
 
 type LatencyPeriod = "24h" | "7d";
@@ -58,17 +51,11 @@ function formatBucket(iso: string, period: LatencyPeriod): string {
 export default function DashboardPage() {
   const { data: session } = useSession();
   const [stats, setStats] = useState<Stats | null>(null);
-  const [health, setHealth] = useState<Health | null>(null);
 
   useEffect(() => {
     fetch("/api/stats")
       .then((res) => res.json())
       .then(setStats)
-      .catch(console.error);
-
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then(setHealth)
       .catch(console.error);
   }, []);
 
@@ -79,7 +66,7 @@ export default function DashboardPage() {
         <p className="text-muted-foreground">Welcome, {session?.user?.email}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Requests Today</CardTitle>
@@ -95,19 +82,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.avgLatencyMs ?? "—"} ms</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Token Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Badge
-              variant={health?.status === "active" ? "default" : health?.status === "expiring-soon" ? "secondary" : "destructive"}
-            >
-              {health?.status ?? "unknown"}
-            </Badge>
           </CardContent>
         </Card>
       </div>
