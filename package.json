@@ -14,7 +14,8 @@
     "start:dashboard": "dotenv -e .env -- npm -w next-app start",
     "login": "node index.js login",
     "setup": "node index.js setup",
-    "test:refresh": "node lib/test-refresh.js"
+    "test:refresh": "node lib/test-refresh.js",
+    "test": "node --test lib/*.test.js"
   },
   "private": true,
   "workspaces": [

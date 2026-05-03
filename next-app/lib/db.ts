@@ -8,6 +8,7 @@ export {
   queryLogs,
   getStats,
   getUsageStats,
+  queryLeaderboard,
 } from "../../lib/db.js";
 
 // @ts-ignore - JS module without bundled types
