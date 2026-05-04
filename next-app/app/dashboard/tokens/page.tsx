@@ -26,7 +26,7 @@ import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import { maskedSecret } from "@/lib/utils";
 import type { UserToken } from "@/lib/db";
 import { SnippetBlock } from "@/app/dashboard/components/SnippetBlock";
-import { buildSettingsSnippet, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
+import { buildSettingsSnippet, isLikelyDevPortMismatch, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
 
 function relative(time: string | null) {
   if (!time) return "—";
@@ -51,7 +51,18 @@ export default function TokensPage() {
   const [snippetTokenId, setSnippetTokenId] = useState<string | null>(null);
 
   useEffect(() => {
-    setSnippetOrigin(window.location.origin);
+    let cancelled = false;
+    fetch("/api/proxy-info", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setSnippetOrigin(data.baseUrl || window.location.origin);
+      })
+      .catch(() => {
+        if (!cancelled) setSnippetOrigin(window.location.origin);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const load = useCallback(async () => {
@@ -147,6 +158,13 @@ export default function TokensPage() {
                 Add the following to <code>~/.claude/settings.json</code>. Claude Code will route
                 requests through this proxy.
               </p>
+              {isLikelyDevPortMismatch(snippetOrigin) ? (
+                <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs">
+                  This URL points at Next.js&apos;s dev port (<code>:3000</code>), not the proxy.
+                  Open the dashboard at <code>:8080</code> instead, or set{" "}
+                  <code>PUBLIC_PROXY_URL</code> in <code>.env</code>.
+                </p>
+              ) : null}
               {activeTokens.length > 1 ? (
                 <div className="space-y-1.5">
                   <label className="text-xs text-muted-foreground" htmlFor="snippet-token-select">

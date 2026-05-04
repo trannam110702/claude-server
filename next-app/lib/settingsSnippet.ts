@@ -13,3 +13,13 @@ export function buildSettingsSnippet(baseUrl: string, token: string): string {
     2,
   );
 }
+
+// In dev, accessing the dashboard at Next.js's port 3000 bypasses the Express
+// proxy on 8080, so the snippet would point Claude Code at the wrong port.
+export function isLikelyDevPortMismatch(baseUrl: string): boolean {
+  try {
+    return new URL(baseUrl).port === "3000";
+  } catch {
+    return false;
+  }
+}

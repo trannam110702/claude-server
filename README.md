@@ -156,6 +156,7 @@ Copy the authorization URL, open it in **your Mac's browser**, and complete the 
 | `PORT` | Server port | `8080` |
 | `OAUTH_CALLBACK_PORT` | Fixed port for login callback | random |
 | `ANTHROPIC_BASE_URL` | Custom Anthropic API base URL | `https://api.anthropic.com` |
+| `PUBLIC_PROXY_URL` | Canonical proxy URL shown in the dashboard's setup guide. If unset, derived from request headers — correct in production (Docker exposes 8080) but wrong in dev when accessing the dashboard via `localhost:3000` directly. Example: `http://localhost:8080`. | derived |
 
 ## Common Docker Commands
 

@@ -15,7 +15,7 @@ import {
 import { SnippetBlock } from "@/app/dashboard/components/SnippetBlock";
 import { maskedSecret } from "@/lib/utils";
 import type { UserToken } from "@/lib/db";
-import { buildSettingsSnippet, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
+import { buildSettingsSnippet, isLikelyDevPortMismatch, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
 
 export default function DocsPage() {
   const [origin, setOrigin] = useState("");
@@ -24,7 +24,18 @@ export default function DocsPage() {
   const [revealed, setRevealed] = useState(false);
 
   useEffect(() => {
-    setOrigin(window.location.origin);
+    let cancelled = false;
+    fetch("/api/proxy-info", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setOrigin(data.baseUrl || window.location.origin);
+      })
+      .catch(() => {
+        if (!cancelled) setOrigin(window.location.origin);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const load = useCallback(async () => {
@@ -136,6 +147,13 @@ export default function DocsPage() {
             <p className="text-sm text-muted-foreground">Loading…</p>
           ) : (
             <>
+              {isLikelyDevPortMismatch(origin) ? (
+                <p className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs">
+                  This URL points at Next.js&apos;s dev port (<code>:3000</code>), not the proxy.
+                  Open the dashboard at <code>:8080</code> instead, or set{" "}
+                  <code>PUBLIC_PROXY_URL</code> in <code>.env</code>.
+                </p>
+              ) : null}
               <SnippetBlock language="json" code={snippet} />
               <p className="text-xs text-muted-foreground">
                 If you&apos;re viewing this through an SSH tunnel, replace the host in{" "}
