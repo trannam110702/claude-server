@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, BookOpen, FileText, HeartPulse, KeyRound, LogOut, Users, Trophy } from "lucide-react";
+import { Home, BarChart3, BookOpen, FileText, HeartPulse, KeyRound, LogOut, Users, Trophy, UserCog } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,14 +10,15 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { BRAND } from "@/lib/branding";
 
 const navItems = [
-  { href: "/dashboard", label: "Overview", icon: Home },
-  { href: "/dashboard/accounts", label: "Accounts", icon: Users },
-  { href: "/dashboard/tokens", label: "API tokens", icon: KeyRound },
-  { href: "/dashboard/docs", label: "Setup guide", icon: BookOpen },
-  { href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
-  { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
-  { href: "/dashboard/logs", label: "Logs", icon: FileText },
-  { href: "/dashboard/health", label: "Health", icon: HeartPulse },
+  { href: "/dashboard", label: "Overview", icon: Home, adminOnly: false },
+  { href: "/dashboard/accounts", label: "Accounts", icon: Users, adminOnly: false },
+  { href: "/dashboard/tokens", label: "API tokens", icon: KeyRound, adminOnly: false },
+  { href: "/dashboard/docs", label: "Setup guide", icon: BookOpen, adminOnly: false },
+  { href: "/dashboard/users", label: "Users", icon: UserCog, adminOnly: true },
+  { href: "/dashboard/usage", label: "Usage", icon: BarChart3, adminOnly: false },
+  { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, adminOnly: false },
+  { href: "/dashboard/logs", label: "Logs", icon: FileText, adminOnly: false },
+  { href: "/dashboard/health", label: "Health", icon: HeartPulse, adminOnly: false },
 ];
 
 export function Sidebar() {
@@ -35,7 +36,9 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
+        {navItems
+          .filter((item) => !item.adminOnly || session?.user?.isAdmin)
+          .map((item) => {
           const isActive =
             item.href === "/dashboard"
               ? pathname === item.href
