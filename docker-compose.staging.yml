@@ -1,0 +1,10 @@
+services:
+  claude-server:
+    container_name: claude-server-staging
+    ports: !override
+      - "8081:8080"
+    volumes: !override
+      - claude-data-staging:/data
+
+volumes:
+  claude-data-staging:

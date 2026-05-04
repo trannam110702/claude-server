@@ -51,14 +51,16 @@ Both checkouts use the same `Dockerfile` and `docker-compose.yml`. Staging layer
 services:
   claude-server:
     container_name: claude-server-staging
-    ports:
+    ports: !override
       - "8081:8080"
-    volumes:
+    volumes: !override
       - claude-data-staging:/data
 
 volumes:
   claude-data-staging:
 ```
+
+The `!override` tag (Compose v2.20+) replaces the parent's list entirely. Without it, Compose merges `ports` and `volumes` by appending — the staging container would inherit `8080:8080` from the base file and try to bind it on the host, conflicting with prod.
 
 ### 4.2 New: `.github/workflows/deploy-staging.yml`
 

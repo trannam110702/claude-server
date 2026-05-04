@@ -40,23 +40,22 @@ Create `docker-compose.staging.yml`:
 services:
   claude-server:
     container_name: claude-server-staging
-    ports:
+    ports: !override
       - "8081:8080"
-    volumes:
+    volumes: !override
       - claude-data-staging:/data
 
 volumes:
   claude-data-staging:
 ```
 
+The `!override` tag (Compose v2.20+) replaces the parent's list entirely. Without it, the staging container would inherit `8080:8080` from the base file's ports list (since Compose merges lists by appending) and fail to start on the VPS because prod already owns port 8080.
+
 - [ ] **Step 2: Locally verify the merged compose config parses**
 
 Run: `docker compose -f docker-compose.yml -f docker-compose.staging.yml config`
 
-Expected: prints the merged config without errors. The output should show:
-- `container_name: claude-server-staging`
-- `published: "8081"` under ports
-- A `claude-data-staging` named volume
+Expected: prints the merged config without errors. The merged output should show **exactly one** entry under `ports` (`published: "8081"`) and **exactly one** entry under the service's `volumes` (`source: claude-data-staging`). If you see two ports or two volumes, the `!override` tag was not applied — check Compose version.
 
 If `docker` is not installed locally, skip — the same command runs on the VPS during the first deploy and any error there will be caught.
 
