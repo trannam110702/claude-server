@@ -55,6 +55,7 @@ export {
   listUsers,
   isAdminInDb,
   setAdminInDb,
+  inviteUser,
 } from "../../lib/users.js";
 
 export interface DashboardUser {
