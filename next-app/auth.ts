@@ -24,6 +24,15 @@ declare module "next-auth" {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   callbacks: {
+    jwt({ token, user }) {
+      // Pin token.sub to a stable identifier. Auth.js v5 assigns a fresh
+      // crypto.randomUUID() to user.id on every OAuth sign-in (see
+      // @auth/core's getUserAndAccount), which would otherwise orphan
+      // everything keyed off session.user.id — notably user-issued API
+      // tokens — every time the user signs out and back in.
+      if (user?.email) token.sub = user.email.toLowerCase();
+      return token;
+    },
     session({ session, token }) {
       if (session.user) {
         if (token.sub) session.user.id = token.sub;
