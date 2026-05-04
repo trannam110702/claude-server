@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { isAdmin } from "@/lib/admin";
+import { upsertUserOnLogin } from "@/lib/db";
 
 declare module "next-auth" {
   interface Session {
@@ -34,6 +35,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.isAdmin = isAdmin(session.user.email);
       }
       return session;
+    },
+  },
+  events: {
+    // Record every successful sign-in. Failures here must not block sign-in
+    // (transient DB errors shouldn't lock people out), so we log and swallow.
+    async signIn({ user }) {
+      if (!user?.email) return;
+      try {
+        upsertUserOnLogin({
+          email: user.email,
+          name: user.name ?? null,
+          image: user.image ?? null,
+        });
+      } catch (err) {
+        console.error("[auth] upsertUserOnLogin failed:", (err as Error).message);
+      }
     },
   },
 });
