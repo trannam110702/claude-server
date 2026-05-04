@@ -199,6 +199,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Browser navigation (e.g. visiting the root domain) — send to the dashboard
+    // instead of the API-shaped JSON 404. Detect via Accept: text/html so SDKs
+    // and curl callers still get the structured error they expect.
+    const accept = req.headers["accept"] || "";
+    if (req.method === "GET" && accept.includes("text/html")) {
+      res.writeHead(302, { Location: "/dashboard", "Access-Control-Allow-Origin": "*" });
+      res.end();
+      return;
+    }
+
     res.writeHead(404, { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" });
     res.end(JSON.stringify({ error: { message: "Not found", type: "invalid_request_error" } }));
   } catch (err) {
