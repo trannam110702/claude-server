@@ -15,15 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
-
-interface UserToken {
-  id: string;
-  name: string;
-  secret: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
-}
+import { maskedSecret } from "@/lib/utils";
+import type { UserToken } from "@/lib/db";
 
 function relative(time: string | null) {
   if (!time) return "—";
@@ -35,13 +28,6 @@ function relative(time: string | null) {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   return `${d}d ago`;
-}
-
-function maskedSecret(secret: string) {
-  // cs_xxxxxxxxxxxxxxxxxxxxxxxx -> cs_xxxxxxxx•••••••• (preserve prefix, mask rest)
-  if (!secret) return "";
-  const head = secret.slice(0, 11);
-  return `${head}${"•".repeat(Math.max(8, Math.min(24, secret.length - 11)))}`;
 }
 
 export default function TokensPage() {
