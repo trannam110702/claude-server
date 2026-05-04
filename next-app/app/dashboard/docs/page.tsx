@@ -15,22 +15,7 @@ import {
 import { SnippetBlock } from "@/app/dashboard/components/SnippetBlock";
 import { maskedSecret } from "@/lib/utils";
 import type { UserToken } from "@/lib/db";
-
-const TOKEN_PLACEHOLDER = "<YOUR_API_TOKEN>";
-const URL_PLACEHOLDER = "<YOUR_PROXY_URL>";
-
-function buildSnippet(baseUrl: string, token: string): string {
-  return JSON.stringify(
-    {
-      env: {
-        ANTHROPIC_BASE_URL: baseUrl,
-        ANTHROPIC_AUTH_TOKEN: token,
-      },
-    },
-    null,
-    2,
-  );
-}
+import { buildSettingsSnippet, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
 
 export default function DocsPage() {
   const [origin, setOrigin] = useState("");
@@ -67,7 +52,7 @@ export default function DocsPage() {
 
   const baseUrlForSnippet = origin || URL_PLACEHOLDER;
   const tokenForSnippet = selectedToken?.secret ?? TOKEN_PLACEHOLDER;
-  const snippet = buildSnippet(baseUrlForSnippet, tokenForSnippet);
+  const snippet = buildSettingsSnippet(baseUrlForSnippet, tokenForSnippet);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -147,11 +132,17 @@ export default function DocsPage() {
           <CardTitle className="text-base">2. Add to Claude Code&apos;s settings.json</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <SnippetBlock language="json" code={snippet} />
-          <p className="text-xs text-muted-foreground">
-            If you&apos;re viewing this through an SSH tunnel, replace the host in{" "}
-            <code>ANTHROPIC_BASE_URL</code> with the server&apos;s public address before copying.
-          </p>
+          {origin === "" ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              <SnippetBlock language="json" code={snippet} />
+              <p className="text-xs text-muted-foreground">
+                If you&apos;re viewing this through an SSH tunnel, replace the host in{" "}
+                <code>ANTHROPIC_BASE_URL</code> with the server&apos;s public address before copying.
+              </p>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -187,28 +178,34 @@ export default function DocsPage() {
           <CardTitle className="text-base">4. Verify it works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm">Check the proxy is reachable:</p>
-            <SnippetBlock language="bash" code={`curl ${baseUrlForSnippet}/health`} />
-            <p className="text-xs text-muted-foreground">
-              Expected: JSON like <code>{`{"status":"ok","auth":"oauth","accounts":N}`}</code>.
-            </p>
-          </div>
+          {origin === "" ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <p className="text-sm">Check the proxy is reachable:</p>
+                <SnippetBlock language="bash" code={`curl ${baseUrlForSnippet}/health`} />
+                <p className="text-xs text-muted-foreground">
+                  Expected: JSON like <code>{`{"status":"ok","auth":"oauth","accounts":N}`}</code>.
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <p className="text-sm">Send a test message through Claude Code:</p>
-            <SnippetBlock language="bash" code={`claude -p "say hello"`} />
-            <p className="text-xs text-muted-foreground">
-              Or, if you don&apos;t have the Claude CLI handy, send a one-shot request directly:
-            </p>
-            <SnippetBlock
-              language="bash"
-              code={`curl ${baseUrlForSnippet}/v1/messages \\
+              <div className="space-y-2">
+                <p className="text-sm">Send a test message through Claude Code:</p>
+                <SnippetBlock language="bash" code={`claude -p "say hello"`} />
+                <p className="text-xs text-muted-foreground">
+                  Or, if you don&apos;t have the Claude CLI handy, send a one-shot request directly:
+                </p>
+                <SnippetBlock
+                  language="bash"
+                  code={`curl ${baseUrlForSnippet}/v1/messages \\
   -H "Authorization: Bearer ${tokenForSnippet}" \\
   -H "Content-Type: application/json" \\
   -d '{"model":"claude-sonnet-4-6","max_tokens":64,"messages":[{"role":"user","content":"say hello"}]}'`}
-            />
-          </div>
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
