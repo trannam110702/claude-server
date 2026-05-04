@@ -49,6 +49,23 @@ export {
   USER_TOKENS_DB_FILE,
 } from "../../lib/userTokens.js";
 
+// @ts-ignore - JS module without bundled types
+export {
+  upsertUserOnLogin,
+  listUsers,
+  isAdminInDb,
+  setAdminInDb,
+} from "../../lib/users.js";
+
+export interface DashboardUser {
+  email: string;
+  name: string | null;
+  image: string | null;
+  isAdmin: boolean;
+  createdAt: string;
+  lastLoginAt: string;
+}
+
 export interface UserToken {
   id: string;
   userId: string;
