@@ -1,11 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,6 +25,8 @@ import {
 import { Check, Copy, Eye, EyeOff } from "lucide-react";
 import { maskedSecret } from "@/lib/utils";
 import type { UserToken } from "@/lib/db";
+import { SnippetBlock } from "@/app/dashboard/components/SnippetBlock";
+import { buildSettingsSnippet, TOKEN_PLACEHOLDER, URL_PLACEHOLDER } from "@/lib/settingsSnippet";
 
 function relative(time: string | null) {
   if (!time) return "—";
@@ -37,6 +47,12 @@ export default function TokensPage() {
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [snippetOrigin, setSnippetOrigin] = useState("");
+  const [snippetTokenId, setSnippetTokenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSnippetOrigin(window.location.origin);
+  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/user-tokens", { cache: "no-store" });
@@ -47,6 +63,15 @@ export default function TokensPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!tokens) return;
+    const firstActive = tokens.find((t) => !t.revokedAt);
+    setSnippetTokenId((current) => {
+      if (current && tokens.some((t) => t.id === current && !t.revokedAt)) return current;
+      return firstActive?.id ?? null;
+    });
+  }, [tokens]);
 
   const create = async () => {
     setCreating(true);
@@ -90,6 +115,15 @@ export default function TokensPage() {
     } catch {}
   };
 
+  const activeTokens = useMemo(
+    () => (tokens ?? []).filter((t) => !t.revokedAt),
+    [tokens],
+  );
+  const snippetToken = activeTokens.find((t) => t.id === snippetTokenId) ?? null;
+  const snippetBaseUrl = snippetOrigin || URL_PLACEHOLDER;
+  const snippetTokenValue = snippetToken?.secret ?? TOKEN_PLACEHOLDER;
+  const snippetCode = buildSettingsSnippet(snippetBaseUrl, snippetTokenValue);
+
   return (
     <div className="space-y-6">
       <div>
@@ -99,6 +133,58 @@ export default function TokensPage() {
           Pass in the request as <code>Authorization: Bearer &lt;token&gt;</code>.
         </p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Use this token in Claude Code</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {snippetOrigin === "" ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Add the following to <code>~/.claude/settings.json</code>. Claude Code will route
+                requests through this proxy.
+              </p>
+              {activeTokens.length > 1 ? (
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground" htmlFor="snippet-token-select">
+                    Embed which token?
+                  </label>
+                  <Select
+                    value={snippetTokenId ?? undefined}
+                    onValueChange={(v) => setSnippetTokenId(v)}
+                  >
+                    <SelectTrigger id="snippet-token-select" className="w-full sm:w-80">
+                      <SelectValue placeholder="Select a token" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeTokens.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.name || "(unnamed)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+              <SnippetBlock language="json" code={snippetCode} />
+              {activeTokens.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Generate a token below to fill this in.
+                </p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Need help finding <code>settings.json</code> or troubleshooting?{" "}
+                <Link className="underline" href="/dashboard/docs">
+                  Open the full setup guide →
+                </Link>
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">
