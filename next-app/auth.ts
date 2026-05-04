@@ -1,5 +1,5 @@
 import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+import authConfig from "./auth.config";
 import { isAdmin } from "@/lib/admin";
 import { upsertUserOnLogin } from "@/lib/db";
 
@@ -15,19 +15,14 @@ declare module "next-auth" {
   }
 }
 
+/**
+ * Full NextAuth config — runs in Node runtime only. Pulls in better-sqlite3
+ * via the session callback (`isAdmin` → `isAdminInDb`) and the signIn event
+ * (`upsertUserOnLogin`). The Edge-runtime middleware uses `auth.config.ts`
+ * directly to avoid bundling these.
+ */
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  // Sits behind the Express proxy on :8080. Trust x-forwarded-* so callback
-  // URLs are built against the public host the browser actually used.
-  trustHost: true,
-  providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   callbacks: {
     session({ session, token }) {
       if (session.user) {

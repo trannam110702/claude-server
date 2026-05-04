@@ -1,5 +1,11 @@
-import { auth } from "@/auth";
+import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
+import authConfig from "./auth.config";
+
+// Use the Edge-safe config — must NOT import `@/auth` (which pulls in
+// better-sqlite3 via the session callback and would break the Edge build
+// with "node:crypto is not handled by plugins").
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
