@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BarChart3, BookOpen, FileText, HeartPulse, KeyRound, LogOut, Users, Trophy, UserCog } from "lucide-react";
+import { Home, BarChart3, BookOpen, FileText, KeyRound, LogOut, Users, Trophy, UserCog } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,6 @@ const navItems = [
   { href: "/dashboard/usage", label: "Usage", icon: BarChart3, adminOnly: false },
   { href: "/dashboard/leaderboard", label: "Leaderboard", icon: Trophy, adminOnly: false },
   { href: "/dashboard/logs", label: "Logs", icon: FileText, adminOnly: false },
-  { href: "/dashboard/health", label: "Health", icon: HeartPulse, adminOnly: false },
 ];
 
 export function Sidebar() {

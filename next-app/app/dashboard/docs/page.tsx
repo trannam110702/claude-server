@@ -262,9 +262,9 @@ export default function DocsPage() {
             <div>
               <dt className="font-medium">Upstream <code>5xx</code> from Claude</dt>
               <dd className="text-muted-foreground">
-                Check{" "}
-                <Link className="underline" href="/dashboard/health">/dashboard/health</Link>{" "}
-                for account status; the proxy may need an upstream token refresh.
+                The proxy may need an upstream token refresh; check{" "}
+                <Link className="underline" href="/dashboard/accounts">/dashboard/accounts</Link>{" "}
+                for account status.
               </dd>
             </div>
           </dl>
