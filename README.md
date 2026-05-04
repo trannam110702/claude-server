@@ -116,17 +116,6 @@ docker run -d \
   nam1107/claude-server
 ```
 
-## Anti-Ban Posture
-
-This proxy takes several steps to reduce the chance Anthropic flags the upstream OAuth accounts:
-
-- **Per-user account pinning** — each user is pinned to one account on their first request and re-uses it for every subsequent request. If one user gets flagged, the blast radius is one account, not all of them. The pin is cleared automatically if its account is deleted.
-- **Tool-name cloaking + Claude Code decoys** — every client tool is renamed with an `_ide` suffix and the canonical Claude Code tool surface (Bash, Read, Write, Task, …) is appended as "unavailable" decoys, so requests look like genuine Claude Code from the upstream's perspective.
-- **Dynamic header replay** — when a real Claude Code client passes through the proxy, its identity headers (`User-Agent`, `Anthropic-Beta`, `X-Stainless-*`, etc.) are captured to `~/.claude-server/headerCache.json` and replayed on subsequent OAuth-mode upstream calls. Falls back to a hardcoded `claude-cli/2.1.63` set on cold start. To refresh after a Claude Code version bump, delete `~/.claude-server/headerCache.json` and let a real CC client repopulate it.
-- **Billing header + fake user_id** — every OAuth-mode request has a `cc_version=…; cc_entrypoint=cli; cch=…` block injected as the first system message and a UUID injected as `metadata.user_id`, matching the format real Claude Code emits.
-
-None of this changes Anthropic's terms-of-service position on running a multi-user proxy in front of a personal subscription. It only reduces the operational signals that make detection easy.
-
 ## Token Binding (Important)
 
 Claude OAuth tokens may be bound to the IP address where they were created. If tokens from your Mac don't work on the VPS, you need to generate them from the VPS IP.
