@@ -19,6 +19,7 @@ interface AuthData {
   codeVerifier: string;
   state: string;
   redirectUri: string;
+  manual: boolean;
 }
 
 interface ConnectedAccount {
@@ -101,7 +102,7 @@ export function AddAccountDialog({
   // here. This works across browser profiles because coordination is server-
   // side, not browser-side. Stops on success/error/dialog-close/5min timeout.
   useEffect(() => {
-    if (!authData) return;
+    if (!authData || authData.manual) return;
     let cancelled = false;
     const startedAt = Date.now();
     const TIMEOUT_MS = 5 * 60 * 1000;
@@ -148,7 +149,14 @@ export function AddAccountDialog({
     try {
       setError(null);
       setStep("connect");
-      const redirectUri = `${window.location.origin}/callback`;
+      // Anthropic's OAuth client only whitelists localhost/* and the OOB
+      // console URL. On any other origin, redirecting back to /callback
+      // returns "Redirect URI ... is not supported by client", so fall
+      // back to the OOB flow and let the user paste the code.
+      const isLocal = /^(localhost$|127\.|\[?::1\]?$)/i.test(window.location.hostname);
+      const redirectUri = isLocal
+        ? `${window.location.origin}/callback`
+        : "https://console.anthropic.com/oauth/code/callback";
       const res = await fetch(
         `/api/claude/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}`
       );
@@ -159,6 +167,7 @@ export function AddAccountDialog({
         codeVerifier: data.codeVerifier,
         state: data.state,
         redirectUri,
+        manual: !isLocal,
       });
     } catch (err) {
       setError((err as Error).message);
@@ -256,9 +265,9 @@ export function AddAccountDialog({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Open this URL in the Chrome profile that&apos;s signed in to the
-                Claude account you want to add. Once you authorize, this dialog
-                will pick up the result automatically — no copy-paste back.
+                {authData.manual
+                  ? "Open this URL in the Chrome profile that's signed in to the Claude account you want to add. After you authorize, Anthropic will display a code — copy it and paste it below."
+                  : "Open this URL in the Chrome profile that's signed in to the Claude account you want to add. Once you authorize, this dialog will pick up the result automatically — no copy-paste back."}
               </p>
               <div className="flex flex-wrap gap-2 pt-1">
                 <Button
@@ -282,32 +291,53 @@ export function AddAccountDialog({
               </div>
             </div>
 
-            <div className="rounded-md bg-muted/50 p-3 text-sm flex items-center gap-2">
-              <span className="inline-block size-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-muted-foreground">
-                Waiting for authorization…
-              </span>
-            </div>
-
-            <details className="text-xs text-muted-foreground">
-              <summary className="cursor-pointer">Auto-pickup not working? Paste manually</summary>
-              <div className="space-y-2 pt-3">
+            {authData.manual ? (
+              <div className="space-y-2">
+                <Label>Paste the code from Anthropic</Label>
                 <Input
-                  placeholder="Paste callback URL or code"
+                  placeholder="Paste code (looks like abc…#state)"
                   value={callbackUrl}
                   onChange={(e) => setCallbackUrl(e.target.value)}
                   className="font-mono text-xs"
                 />
                 <Button
                   size="sm"
-                  variant="secondary"
                   onClick={submitManual}
                   disabled={!callbackUrl.trim()}
                 >
                   Connect with pasted code
                 </Button>
               </div>
-            </details>
+            ) : (
+              <>
+                <div className="rounded-md bg-muted/50 p-3 text-sm flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-muted-foreground">
+                    Waiting for authorization…
+                  </span>
+                </div>
+
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer">Auto-pickup not working? Paste manually</summary>
+                  <div className="space-y-2 pt-3">
+                    <Input
+                      placeholder="Paste callback URL or code"
+                      value={callbackUrl}
+                      onChange={(e) => setCallbackUrl(e.target.value)}
+                      className="font-mono text-xs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={submitManual}
+                      disabled={!callbackUrl.trim()}
+                    >
+                      Connect with pasted code
+                    </Button>
+                  </div>
+                </details>
+              </>
+            )}
 
             <div className="flex justify-end gap-2">
               <Button variant="ghost" onClick={() => handleOpenChange(false)}>
