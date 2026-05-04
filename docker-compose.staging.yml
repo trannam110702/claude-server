@@ -8,3 +8,7 @@ services:
 
 volumes:
   claude-data-staging:
+    # Pin the literal volume name (skip the project-name prefix) so the
+    # bootstrap script can reference it without depending on which
+    # directory Compose was invoked from.
+    name: claude-data-staging

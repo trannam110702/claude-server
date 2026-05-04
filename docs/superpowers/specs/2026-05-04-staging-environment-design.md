@@ -58,9 +58,15 @@ services:
 
 volumes:
   claude-data-staging:
+    name: claude-data-staging
 ```
 
-The `!override` tag (Compose v2.20+) replaces the parent's list entirely. Without it, Compose merges `ports` and `volumes` by appending — the staging container would inherit `8080:8080` from the base file and try to bind it on the host, conflicting with prod.
+Two non-obvious bits:
+
+- **`!override` tag (Compose v2.20+)** replaces the parent's list entirely. Without it, Compose merges `ports` and `volumes` by appending — the staging container would inherit `8080:8080` from the base file and try to bind it on the host, conflicting with prod.
+- **`name: claude-data-staging`** pins the literal volume name. Without it, Compose prefixes named volumes with the project name (`claude-server-staging_claude-data-staging`), which makes the bootstrap script's volume references depend on which directory Compose was invoked from. Pinning gives the script a stable name to mount.
+
+The prod volume on the VPS is named `claude-server_claude-data` (the project-name-prefixed default, since the base `docker-compose.yml` does not pin it). The bootstrap script references both names literally.
 
 ### 4.2 New: `.github/workflows/deploy-staging.yml`
 
@@ -103,7 +109,7 @@ docker compose -f docker-compose.yml -f docker-compose.staging.yml down
 # 2. Copy prod DB into staging volume via a throwaway alpine container,
 #    then strip the accounts table.
 docker run --rm \
-  -v claude-data:/prod:ro \
+  -v claude-server_claude-data:/prod:ro \
   -v claude-data-staging:/staging \
   alpine sh -c '
     apk add --no-cache sqlite >/dev/null
